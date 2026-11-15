@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taman Matahari & Lily Putih</title>
+<style>
+  /* ===== warna per suasana ===== */
+  body {
+    --h0:#b4e0bd; --h1:#86d28d; --h2:#62bd69; --h3:#40a04b;
+    --g1:#3a9644; --g2:#5bba5f; --fog:#fff1c9; --cloud:#ffffff;
+    --spark:#ffffff; --lglow:#fff6c2; --ray:#fff3b8; --vig:rgba(30,70,30,.18);
+  }
+  body[data-mode="dusk"] {
+    --h0:#8a4a86; --h1:#6c3b78; --h2:#4a3366; --h3:#34284f;
+    --g1:#3f4a3d; --g2:#6a7a3f; --fog:#ff9d6c; --cloud:#ffb89a;
+    --spark:#ffe0b0; --lglow:#ffd2a0; --vig:rgba(30,8,40,.45);
+  }
+  body[data-mode="night"] {
+    --h0:#212f6b; --h1:#2a3a80; --h2:#243369; --h3:#1d2a58;
+    --g1:#3b7a5c; --g2:#5f9f7c; --fog:#2a3a80; --cloud:#9db0ff;
+    --spark:#cfe9ff; --lglow:#d6e6ff; --ray:#d6e6ff; --vig:rgba(0,0,14,.55);
+  }
+
+  html, body { height:100%; margin:0; overflow:hidden; background:#0a0f2e; font-family:"Segoe UI",system-ui,sans-serif; }
+  #scene { position:fixed; inset:0; width:100%; height:100%; display:block; opacity:0; }
+  body.opened #scene { animation:intro 3.6s cubic-bezier(.2,.7,.2,1) both; }
+  /* semua animasi taman menunggu sampai tombol "Open it" ditekan */
+  body:not(.opened) #scene, body:not(.opened) #scene * { animation-play-state:paused !important; }
+  @keyframes intro { from{ opacity:0; transform:scale(1.14); } to{ opacity:1; transform:scale(1); } }
+  .par { transition:transform .25s ease-out; }
+
+  /* visibilitas per suasana: n = malam, d = siang, s = senja */
+  [data-v] { opacity:0; transition:opacity 1.3s; }
+  body[data-mode="night"] [data-v*="n"],
+  body[data-mode="day"]   [data-v*="d"],
+  body[data-mode="dusk"]  [data-v*="s"] { opacity:1; }
+
+  .h0 { fill:var(--h0); transition:fill 1.3s; } .h1 { fill:var(--h1); transition:fill 1.3s; }
+  .h2 { fill:var(--h2); transition:fill 1.3s; } .h3 { fill:var(--h3); transition:fill 1.3s; }
+  .grass1 { fill:var(--g1); transition:fill 1.3s; } .grass2 { fill:var(--g2); transition:fill 1.3s; }
+  .cl { fill:var(--cloud); fill-opacity:.88; transition:fill 1.3s; }
+  .dim { transition:filter 1.3s; }
+  body[data-mode="night"] .dim { filter:brightness(.52) saturate(.85); }
+  body[data-mode="dusk"]  .dim { filter:brightness(.8) sepia(.35) saturate(1.35) hue-rotate(-10deg); }
+  body[data-mode="night"] .lilyBloomWrap { filter:drop-shadow(0 0 22px #cfe4ffcc); }
+  body[data-mode="dusk"]  .lilyBloomWrap { filter:drop-shadow(0 0 18px #ffd2a0cc); }
+  body[data-mode="day"]   .lilyBloomWrap { filter:drop-shadow(0 3px 5px #00000022); }
+  .fgblur { filter:blur(2.4px); }
+  .blend { mix-blend-mode:screen; }
+  .rs { opacity:.85; transition:opacity 1.3s; }
+  body[data-mode="day"] .rs { opacity:.4; }
+  .rp { animation:rayp 7s ease-in-out infinite alternate; }
+  @keyframes rayp { from{ opacity:.45; } to{ opacity:1; } }
+
+  /* goyangan */
+  .sw { animation:sw var(--t,6s) ease-in-out infinite alternate; }
+  @keyframes sw { from{ transform:rotate(calc(var(--a,1.5deg) * -1)); } to{ transform:rotate(var(--a,1.5deg)); } }
+  [data-k] { cursor:pointer; }
+  .gs { transform-origin:800px 900px; animation:gs 5s ease-in-out infinite alternate; }
+  @keyframes gs { from{ transform:skewX(-1.6deg); } to{ transform:skewX(1.6deg); } }
+
+  /* bunga lily mekar */
+  .tp { transform-box:fill-box; transform-origin:50% 100%; animation:open 2.2s cubic-bezier(.2,.9,.3,1.15) both; }
+  @keyframes open { from{ transform:scale(.04,.02); opacity:0; } to{ transform:scale(1,1); opacity:1; } }
+  .st { transform-box:fill-box; transform-origin:50% 100%; animation:open 1.6s ease-out both 2.6s; }
+  .breathe { transform-box:fill-box; transform-origin:center; animation:breathe 5s ease-in-out infinite alternate 4s; }
+  @keyframes breathe { from{ transform:scale(1); } to{ transform:scale(1.025); } }
+  .lglow { transform-box:fill-box; transform-origin:center; animation:lpulse 4.5s ease-in-out infinite alternate; }
+  @keyframes lpulse { from{ transform:scale(.92); } to{ transform:scale(1.08); } }
+  .spk { transform-box:fill-box; transform-origin:center; animation:spk var(--t,3s) ease-in-out infinite; }
+  @keyframes spk { 0%,100%{ transform:scale(.1); opacity:0; } 50%{ transform:scale(1); opacity:1; } }
+  .mote { animation:rise var(--t,7s) ease-in infinite; }
+  @keyframes rise { 0%{ transform:translate(0,0) scale(.5); opacity:0; } 18%{ opacity:1; } 100%{ transform:translate(var(--dx),-150px) scale(1); opacity:0; } }
+
+  /* partikel, kunang-kunang, bintang */
+  .fl { animation:fl var(--t,12s) ease-in-out infinite; }
+  @keyframes fl { 0%{ opacity:0; transform:translate(0,0); } 20%{ opacity:.9; } 100%{ opacity:0; transform:translate(var(--dx),var(--dy)); } }
+  .ff { animation:ffm var(--t,8s) ease-in-out infinite alternate; }
+  @keyframes ffm { to{ transform:translate(var(--dx),var(--dy)); } }
+  .ffg { animation:ffb 3s ease-in-out infinite; }
+  @keyframes ffb { 0%,100%{ opacity:.2; } 50%{ opacity:1; } }
+  .star { animation:twinkle 3s ease-in-out infinite; }
+  @keyframes twinkle { 0%,100%{ opacity:.25; } 50%{ opacity:1; } }
+  .shoot { animation:shoot var(--t,11s) linear infinite; }
+  @keyframes shoot { 0%,88%{ opacity:0; transform:translate(0,0); } 89%{ opacity:1; } 100%{ opacity:0; transform:translate(-360px,180px); } }
+  .aur { transform-box:fill-box; transform-origin:center; animation:aur 16s ease-in-out infinite alternate; }
+  @keyframes aur { from{ transform:translateX(-50px) scaleY(.85); } to{ transform:translateX(50px) scaleY(1.2); } }
+  .cloud { animation:drift linear infinite; }
+  @keyframes drift { from{ transform:translateX(-350px); } to{ transform:translateX(1950px); } }
+  .mist { animation:mist 26s ease-in-out infinite alternate; }
+  @keyframes mist { from{ transform:translateX(-90px); } to{ transform:translateX(90px); } }
+  .rays { transform-origin:1250px 220px; animation:spin 60s linear infinite; }
+  @keyframes spin { to{ transform:rotate(360deg); } }
+
+  /* kupu-kupu */
+  .bf { animation-timing-function:ease-in-out; animation-iteration-count:infinite; }
+  .wR, .wL { transform-box:fill-box; animation:flap .22s ease-in-out infinite alternate; }
+  .wR { transform-origin:0% 50%; } .wL { transform-origin:100% 50%; }
+  @keyframes flap { from{ transform:scaleX(1); } to{ transform:scaleX(.25); } }
+  @keyframes bf1 { 0%{transform:translate(120px,520px)} 25%{transform:translate(520px,400px)} 50%{transform:translate(980px,570px)} 75%{transform:translate(1350px,430px)} 100%{transform:translate(120px,520px)} }
+  @keyframes bf2 { 0%{transform:translate(1450px,560px)} 30%{transform:translate(1000px,430px)} 60%{transform:translate(560px,610px)} 100%{transform:translate(1450px,560px)} }
+  @keyframes bf3 { 0%{transform:translate(400px,640px)} 35%{transform:translate(780px,520px)} 70%{transform:translate(1180px,650px)} 100%{transform:translate(400px,640px)} }
+
+  /* kelopak jatuh */
+  .fall { position:fixed; width:14px; height:18px; border-radius:70% 0 70% 0; pointer-events:none; z-index:5; animation:fallp linear forwards; }
+  @keyframes fallp { to{ transform:translate3d(var(--dx),110vh,0) rotate(var(--r)); } }
+
+  /* overlay */
+  #vig { position:fixed; inset:0; pointer-events:none; z-index:2; background:radial-gradient(ellipse at 50% 58%, transparent 48%, var(--vig) 100%); }
+  #cursorLight { position:fixed; width:340px; height:340px; border-radius:50%; pointer-events:none; z-index:2;
+    background:radial-gradient(circle, rgba(255,244,200,.28), transparent 65%); mix-blend-mode:screen;
+    transform:translate(-50%,-50%); left:50%; top:50%; opacity:0; transition:opacity 1s; }
+  body[data-mode="night"] #cursorLight, body[data-mode="dusk"] #cursorLight { opacity:1; }
+
+  /* antarmuka */
+  .ui { position:fixed; top:14px; left:14px; display:flex; gap:8px; z-index:10; }
+  .ui button {
+    display:flex; align-items:center; gap:8px; cursor:pointer; color:#fff; font-size:.95rem; font-weight:500;
+    background:rgba(20,30,70,.38); border:1px solid rgba(255,255,255,.28);
+    border-radius:999px; padding:10px 18px; backdrop-filter:blur(8px); transition:background .2s, transform .15s;
+  }
+  .ui button:hover { background:rgba(40,55,110,.55); transform:translateY(-1px); }
+  .ui .round { padding:10px; width:42px; height:42px; justify-content:center; }
+  #modeIcon { font-size:1.15rem; line-height:1; }
+  .panel {
+    position:fixed; top:68px; left:14px; width:min(460px,92vw); max-height:calc(100vh - 90px); overflow-y:auto;
+    z-index:10; color:#fff; box-sizing:border-box;
+    background:rgba(15,22,50,.88); backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.18); border-radius:18px; padding:20px 22px;
+    line-height:1.7; font-size:.93rem; transition:opacity .25s, transform .25s;
+    scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.3) transparent;
+  }
+  .panel.hidden { opacity:0; transform:translateY(-8px); pointer-events:none; }
+  .panel h2 { font-family:Georgia,serif; font-size:1.2rem; margin:0 0 4px; font-weight:400; }
+  .panel .sub { opacity:.7; font-size:.85rem; margin:0 0 16px; font-style:italic; }
+  .panel p { margin:0 0 .95em; }
+  .panel strong { font-weight:600; }
+  .panel .sign { margin-top:1.4em; margin-bottom:0; }
+  #toast {
+    position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px);
+    max-width:min(560px,90vw); text-align:center; z-index:10; color:#fff;
+    background:rgba(15,22,50,.84); backdrop-filter:blur(8px);
+    border-radius:16px; padding:12px 20px; line-height:1.5; font-size:.95rem;
+    opacity:0; pointer-events:none; transition:opacity .3s, transform .3s;
+  }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  #musicBtn { font-size:1.15rem; line-height:1; }
+
+  /* ===== layar pembuka ===== */
+  .ui { opacity:0; pointer-events:none; transition:opacity 1.5s 2s; }
+  body.opened .ui { opacity:1; pointer-events:auto; }
+  #intro {
+    position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:36px;
+    color:#fff; background:radial-gradient(ellipse at 50% 62%, #34408a 0%, #1a2560 45%, #060a22 100%);
+    transition:opacity 1.6s ease, visibility 1.6s;
+  }
+  #intro.gone { opacity:0; visibility:hidden; pointer-events:none; }
+  #intro .stars { position:absolute; inset:0; overflow:hidden; }
+  #intro .stars i { position:absolute; border-radius:50%; background:#fff; animation:twinkle 3s ease-in-out infinite; }
+  #intro h1 {
+    position:relative; margin:0; font-family:Georgia,serif; font-weight:400; letter-spacing:.04em;
+    font-size:clamp(2.6rem,9vw,5rem); text-shadow:0 0 28px rgba(207,228,255,.75);
+    animation:introText 2.4s ease-out backwards .4s;
+  }
+  #openBtn {
+    position:relative; cursor:pointer; color:#fff; font-size:1.05rem; font-weight:500; letter-spacing:.08em;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.45); border-radius:999px; padding:14px 38px;
+    backdrop-filter:blur(8px); box-shadow:0 0 24px rgba(207,228,255,.25);
+    transition:background .25s, transform .2s, box-shadow .25s; animation:introText 2s ease-out backwards 1.6s;
+  }
+  #openBtn:hover { background:rgba(255,255,255,.2); transform:translateY(-2px); box-shadow:0 0 34px rgba(207,228,255,.5); }
+  @keyframes introText { from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
+</style>
+</head>
+<body data-mode="night">
+
+<!-- layar pembuka -->
+<div id="intro">
+  <div class="stars"></div>
+  <h1>I'm here</h1>
+  <button id="openBtn">Open it</button>
+</div>
+
+<!-- MUSIK: taruh file lagu Anda di folder yang sama dengan file ini, lalu samakan nama di src.
+     Contoh: musik.mp3 (atau ganti src menjadi nama file lagu Anda). -->
+<audio id="bgm" src="song.mp3" loop preload="auto"></audio>
+
+<svg id="scene" viewBox="0 0 1600 900" preserveAspe5ctRatio="xMidYMax slice" aria-label="Taman bunga matahari dengan satu lily putih di tengah"></svg>
+<div id="vig"></div>
+<div id="cursorLight"></div>
+
+<div class="ui">
+  <button id="modeBtn" class="round" aria-label="Ganti suasana"><span id="modeIcon">🌙</span></button>
+  <button id="musicBtn" class="round" aria-label="Putar atau jeda musik">🔊</button>
+  <button id="docBtn" class="round" aria-label="Baca surat">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+  </button>
+</div>
+
+<div id="panel" class="panel hidden">
+  <h2>A Little Garden, With You in It</h2>
+  <p class="sub">Inspired by "I'd Like to Watch You Sleeping" — Sal Priadi</p>
+
+  <p><strong>Dear Kak Putri,</strong></p>
+
+  <p>This time, ku ingin memberikan something a little different from before.</p>
+
+  <p>Kalau Kak Putri masih ingat, kemarin ku pernah memberikan setangkai bunga lily berwarna merah muda. Waktu itu, ku memilih bunga tersebut bukan hanya karena warnanya yang indah, but because there's a little meaning behind it.</p>
+
+  <p>Warna merah mengingatkan ku pada keberanian. Tentang Kak Putri yang selama ini terbiasa melakukan banyak hal sendiri, mengandalkan diri sendiri, dan punya keberanian untuk menghadapi berbagai hal dengan caranya sendiri.</p>
+
+  <p>I really admire that side of you.</p>
+
+  <p>Tapi, melalui bunga itu, sebenarnya ada sesuatu yang ingin ku sampaikan. Sekarang, ada aku juga di sini.</p>
+
+  <p>Bukan berarti Kak Putri tidak bisa melakukan semuanya sendiri lagi. Bukan juga berarti ku ingin mengubah sisi mandiri yang selama ini Kak Putri punya. I just want you to know that you don't always have to do everything alone.</p>
+  <p>Ada aku yang juga ingin ikut menemani perjalanan Kak Putri. Someone who wants to listen to your stories, laugh with you over little silly things, share your happiness, and be part of your days.</p>
+
+  <p>Karena menurutku, being independent doesn't mean you always have to be alone.</p>
+
+  <p>And this time, ku tidak hanya ingin memberikan satu bunga lagi. Ku ingin memberikan sebuah taman kecil.</p>
+
+  <p>Di tengah taman ini, ada bunga lily berwarna putih. The flower I chose to represent Kak Putri.</p>
+
+  <p>Kenapa lily putih?</p>
+
+  <p>Karena ku ingin menggambarkan Kak Putri melalui sesuatu yang punya keindahan tersendiri tanpa harus terlihat berlebihan. Lily putih punya kesan lembut, tulus, dan tenang. There's something beautiful about its simplicity.</p>
+
+  <p>Dan mungkin, that's one of the things that makes Kak Putri so special to me.</p>
+
+  <p>Lalu, ada bunga matahari yang tumbuh di sekelilingnya. That's my flower. Bunga yang ku pilih untuk menggambarkan diriku.</p>
+
+  <p>Bunga matahari dan lily putih memang berbeda. They have their own colors, shapes, and beauty. Namun, kali ini ku ingin keduanya tumbuh di taman yang sama.</p>
+
+  <p>Jadi, Kak Putri tidak sendirian di taman ini. There's a sunflower growing beside the lily. Ada aku, yang juga ingin menjadi bagian dari cerita dan perjalanan Kak Putri.</p>
+
+  <p>Kalau kemarin hanya ada satu bunga lily berwarna merah muda, kali ini ada lily putih dan bunga matahari yang tumbuh berdampingan.</p>
+
+  <p><strong>The lily is still the same, but this time, it has a sunflower growing beside it.</strong></p>
+
+  <p>And there's more to this little garden.</p>
+
+  <p>Kalau Kak Putri memperhatikan bunga-bunga kecil lainnya, they all have their own stories.</p>
+
+  <p>Bunga-bunga itu adalah gambaran dari hal-hal yang sudah kita lalui bersama. Ada bunga untuk kebahagiaan kita, percakapan-percakapan sederhana, hal-hal lucu yang pernah membuat kita tertawa, dan momen-momen kecil yang mungkin terlihat biasa saja bagi orang lain, but somehow mean a lot to me.</p>
+
+  <p>Ada juga bunga yang menggambarkan kesedihan, perasaan yang campur aduk, dan hari-hari ketika semuanya tidak selalu berjalan sesuai harapan.</p>
+
+  <p>Because I believe a garden doesn't have to be filled with flowers that are always blooming beautifully. Ada hari ketika semuanya terlihat indah, ada juga hari ketika suasananya sedikit berbeda. But every flower still deserves a place in the garden.</p>
+
+  <p>Sama seperti cerita kita. Ku ingin semua hal yang pernah kita lalui, baik yang menyenangkan maupun yang tidak, tetap punya tempat tersendiri.</p>
+
+  <p>Oh iya, there's one more thing I want to tell you.</p>
+
+  <p>Belakangan ini, ada satu lagu dari Sal Priadi yang membuat ku memikirkan banyak hal, I'd Like to Watch You Sleeping.</p>
+
+  <p>Ada bagian dalam lagu itu yang berbicara tentang seseorang yang punya banyak ketakutan, terutama ketakutan kehilangan orang yang begitu berarti dan rasa sakit ketika harus menghadapi patah hati.</p>
+
+  <p>Entah kenapa, bagian itu feels close to what I want to tell you.</p>
+
+  <p>Ku memang punya banyak ketakutan, dan salah satunya adalah membayangkan kehilangan Kak Putri. But if I could wish for something, I hope I never have to experience that.</p>
+
+  <p>Ku ingin Kak Putri tetap menjadi bagian dari hari-hariku. Masih bisa mendengar cerita-ceritanya, tertawa bersama, berbagi hal-hal sederhana, and enjoy every little moment whenever we get to be together.</p>
+
+  <p>Ku tahu tidak semua hal bisa kita kendalikan. We both have our own lives, our own stories, and our own little worlds. Tetapi, ku berharap waktu akan memberikan kita lebih banyak kesempatan untuk tetap ada dalam cerita satu sama lain.</p>
+
+  <p>Ku tidak ingin kata "sekali lagi" menjadi sesuatu yang harus kita alami. I hope we never have to lose each other. Kalau ada satu hal yang ingin ku harapkan, itu adalah semoga kali ini dan seterusnya, kita masih bisa terus saling menemukan dalam banyak cerita yang belum selesai kita tulis.</p>
+
+  <p>Lalu, ada bagian lain dari lagu itu yang juga sangat ku suka. Tentang seseorang yang menjadi orang favorit nomor satu, bahkan ketika harus menyebut nomor dua, tiga, empat, lima, dan seterusnya, nama yang sama tetap mengisi semuanya.</p>
+
+  <p>I think that's such a sweet way to describe someone you really like.</p>
+
+  <p>Bayangkan, dari semua nomor dalam daftar orang favorit, semuanya justru diisi oleh satu nama yang sama. Seolah-olah tidak ada orang lain yang perlu menggantikan posisi itu.</p>
+
+  <p>And if I could make a list like that, I think Kak Putri would fill so many of those numbers, too.</p>
+
+  <p>Bukan karena tidak ada hal lain yang ku sukai, but because there are so many little things about Kak Putri that I adore and appreciate. Bahkan hal-hal kecil yang mungkin Kak Putri sendiri tidak menyadarinya.</p>
+
+  <p>Mungkin itu juga alasan mengapa ku ingin membuat taman ini. Ku ingin setiap bunga punya ceritanya sendiri, but somehow, they all lead to one thing: how much your presence means to me.</p>
+
+  <p><strong>Thank you for being part of this little garden, Kak Putri.</strong></p>
+
+  <p>Semoga masih ada banyak bunga yang bisa kita tumbuhkan bersama. More stories to create, more laughter to share, and more little moments that we can keep in our memories.</p>
+
+  <p>Kalau kemarin ku memberikan satu bunga lily untuk menggambarkan keberanian Kak Putri, kali ini ku ingin memberikan sebuah taman untuk menunjukkan bahwa there are so many stories I want to share with you.</p>
+
+  <p>Dan di antara semua bunga yang tumbuh di sini, ku berharap lily dan bunga matahari bisa terus tumbuh berdampingan.</p>
+
+  <p>Kak Putri tetap menjadi Kak Putri dengan segala keberanian dan keindahannya. Sementara ku akan tetap menjadi bunga matahari yang senang bisa tumbuh di dekat lily itu.</p>
+
+  <p><strong>The lily is still the same, and the sunflower is happy to grow beside it.</strong></p>
+
+  <p class="sign">With all the little things I wish I could tell you,</p>
+
+  <p><strong>From the sunflower,<br>to the lily.</strong> ♡</p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const NS = "http://www.w3.org/2000/svg", W = 1600, H = 900;
+const svg = document.getElementById("scene");
+const el = (tag, attrs = {}, parent) => {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+};
+function rng(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const R = rng(20261115);
+const rr = (a, b) => a + R() * (b - a);
+const f1 = n => n.toFixed(1);
+
+/* ---------- bentuk bukit ---------- */
+const hy = (x, base, amp, f, p) => base + Math.sin(x * f + p) * amp + Math.sin(x * f * 2.3 + p * 1.7) * amp * .4;
+const H0 = x => hy(x, 470, 34, .0035, .4);
+const H1 = x => hy(x, 560, 26, .0052, 1);
+const H2 = x => hy(x, 668, 30, .0046, 2.2);
+const H3 = x => hy(x, 792, 20, .0040, 4);
+function hillPath(fn) {
+  let d = `M-100 ${H}`;
+  for (let x = -100; x <= W + 100; x += 20) d += ` L${x} ${fn(x).toFixed(1)}`;
+  return d + ` L${W + 100} ${H}Z`;
+}
+
+/* ---------- gradien ---------- */
+const defs = el("defs", {}, svg);
+function stops(g, list) { list.forEach(([o, c, op = 1]) => el("stop", { offset: o, style: `stop-color:${c};stop-opacity:${op}` }, g)); }
+function lgrad(id, list, a = { x1: 0, y1: 0, x2: 0, y2: 1 }) { stops(el("linearGradient", { id, ...a }, defs), list); }
+function rgrad(id, list) { stops(el("radialGradient", { id }, defs), list); }
+const UP = { x1: 0, y1: 1, x2: 0, y2: 0 };
+
+lgrad("skyDay",   [["0%", "#6ec6ff"], ["55%", "#bfe8ff"], ["100%", "#fff0c4"]]);
+lgrad("skyDusk",  [["0%", "#2b1b5e"], ["34%", "#7a3b8f"], ["68%", "#ff7a5c"], ["100%", "#ffc36b"]]);
+lgrad("skyNight", [["0%", "#060a22"], ["50%", "#1a2560"], ["100%", "#34408a"]]);
+rgrad("sunGlow",  [["0%", "#fff6c2", 1], ["40%", "#ffe07a", .55], ["100%", "#ffe07a", 0]]);
+rgrad("moonGlow", [["0%", "#fff3c4", .45], ["100%", "#fff3c4", 0]]);
+rgrad("duskGlow", [["0%", "#fff0b0", .95], ["30%", "#ffb36b", .55], ["100%", "#ff7a5c", 0]]);
+rgrad("milkyG",   [["0%", "#cfd8ff", .22], ["100%", "#cfd8ff", 0]]);
+lgrad("aurG1", [["0%", "#3cffb0", 0], ["40%", "#3cffb0", .5], ["100%", "#2ec4ff", 0]]);
+lgrad("aurG2", [["0%", "#a46bff", 0], ["40%", "#a46bff", .45], ["100%", "#5bd1ff", 0]]);
+lgrad("aurG3", [["0%", "#4dffa8", 0], ["40%", "#4dffa8", .4], ["100%", "#7a6bff", 0]]);
+lgrad("sfPetal",  [["0%", "#f59e0b"], ["55%", "#fbbf24"], ["100%", "#fde047"]], UP);
+lgrad("sfPetalB", [["0%", "#d97706"], ["100%", "#f59e0b"]], UP);
+rgrad("sfCenter", [["0%", "#7a4a22"], ["70%", "#4a2c12"], ["100%", "#2e1a0b"]]);
+rgrad("ffGlow",   [["0%", "#f4ffa0", 1], ["35%", "#d8f26a", .55], ["100%", "#d8f26a", 0]]);
+rgrad("bokehG",   [["0%", "var(--spark)", .05], ["80%", "var(--spark)", .2], ["100%", "var(--spark)", 0]]);
+lgrad("lilyW",    [["0%", "#d9f09a"], ["13%", "#f3fbd6"], ["40%", "#ffffff"], ["100%", "#fbfcff"]], UP);
+lgrad("lilyWIn",  [["0%", "#d9f09a"], ["13%", "#f6fce0"], ["45%", "#ffffff"], ["100%", "#ffffff"]], UP);
+rgrad("lilyCore", [["0%", "#f6ffb0", 1], ["100%", "#cfe87a", .85]]);
+rgrad("lilyGlowG",  [["0%", "var(--lglow)", .6], ["100%", "var(--lglow)", 0]]);
+rgrad("groundGlow", [["0%", "var(--lglow)", .55], ["100%", "var(--lglow)", 0]]);
+rgrad("mistG",      [["0%", "var(--fog)", .5], ["100%", "var(--fog)", 0]]);
+lgrad("fogGrad",    [["0%", "var(--fog)", 0], ["100%", "var(--fog)", .5]]);
+lgrad("budGrad", [["0%", "#6fae55"], ["100%", "#fbfff0"]], UP);
+lgrad("rayG", [["0%", "var(--ray)", .38], ["45%", "var(--ray)", .12], ["100%", "var(--ray)", 0]], { x1: 1250, y1: 220, x2: 800, y2: 900, gradientUnits: "userSpaceOnUse" });
+lgrad("rayD", [["0%", "#ffb36b", .6], ["100%", "#ff8a5c", 0]], { x1: 1100, y1: 400, x2: -100, y2: 560, gradientUnits: "userSpaceOnUse" });
+
+/* ---------- bentuk yang dipakai ulang ---------- */
+// kepala bunga matahari
+const head = el("g", { id: "sfHead" }, defs);
+{
+  const n = 18;
+  const back = "M0 -34 C20 -58 22 -100 0 -124 C-22 -100 -20 -58 0 -34Z";
+  const front = "M0 -34 C17 -56 18 -92 0 -112 C-18 -92 -17 -56 0 -34Z";
+  [0, 1].forEach(layer => {
+    for (let i = 0; i < n; i++) {
+      const g = el("g", { transform: `rotate(${360 / n * i + (layer ? 180 / n : 0)})` }, head);
+      el("path", { d: layer ? front : back, fill: layer ? "url(#sfPetal)" : "url(#sfPetalB)", stroke: "#b45f04", "stroke-opacity": .3, "stroke-width": .8 }, g);
+      if (layer) el("path", { d: "M0 -38 L0 -100", stroke: "#d08a06", "stroke-opacity": .45, "stroke-width": 1, fill: "none" }, g);
+    }
+  });
+  el("circle", { r: 42, fill: "url(#sfCenter)", stroke: "#35200d", "stroke-width": 3 }, head);
+  const golden = 137.508 * Math.PI / 180;
+  for (let i = 1; i < 120; i++) {
+    const r = 3.4 * Math.sqrt(i), t = i * golden;
+    el("circle", { cx: f1(r * Math.cos(t)), cy: f1(r * Math.sin(t)), r: 1.9, fill: i % 3 === 0 ? "#a8742f" : i % 2 ? "#33200e" : "#6b4423" }, head);
+  }
+  for (let i = 0; i < 24; i++) {
+    const a = i * Math.PI * 2 / 24;
+    el("circle", { cx: f1(37 * Math.cos(a)), cy: f1(37 * Math.sin(a)), r: 2, fill: "#c99a45" }, head);
+  }
+}
+// daun
+const leafDef = el("g", { id: "leaf" }, defs);
+el("path", { d: "M0 0 C16 -16 52 -18 84 0 C52 18 16 16 0 0Z" }, leafDef);
+el("path", { d: "M0 0 L74 0", stroke: "#1f5e25", "stroke-opacity": .5, "stroke-width": 1.4, fill: "none" }, leafDef);
+// bunga liar
+const daisy = el("g", { id: "daisy" }, defs);
+for (let i = 0; i < 10; i++) el("ellipse", { cx: 0, cy: -9, rx: 3, ry: 8, fill: "#fff", stroke: "#e2e2ec", "stroke-width": .4, transform: `rotate(${i * 36})` }, daisy);
+el("circle", { r: 5, fill: "#ffcf33", stroke: "#e0a800", "stroke-width": .5 }, daisy);
+const cosmos = el("g", { id: "cosmos" }, defs);
+for (let i = 0; i < 8; i++) el("ellipse", { cx: 0, cy: -10, rx: 6.5, ry: 11, fill: i % 2 ? "#ff8cc3" : "#ff6fae", stroke: "#e0528f", "stroke-width": .4, transform: `rotate(${i * 45})` }, cosmos);
+el("circle", { r: 4, fill: "#ffd23f" }, cosmos);
+const poppy = el("g", { id: "poppy" }, defs);
+[[-5, -5], [5, -5], [-5, 5], [5, 5]].forEach(([x, y]) => el("circle", { cx: x, cy: y, r: 8, fill: "#ff4d4d", stroke: "#c92a2a", "stroke-width": .5 }, poppy));
+el("circle", { r: 3.2, fill: "#2b1212" }, poppy);
+const lav = el("g", { id: "lav" }, defs);
+for (let i = 0; i < 9; i++) {
+  el("ellipse", { cx: -3, cy: -i * 4, rx: 2.6, ry: 3.4, fill: i % 2 ? "#9b7bff" : "#b79bff" }, lav);
+  el("ellipse", { cx: 3, cy: -i * 4 - 2, rx: 2.6, ry: 3.4, fill: i % 2 ? "#b79bff" : "#9b7bff" }, lav);
+}
+el("ellipse", { cx: 0, cy: -38, rx: 2.4, ry: 4, fill: "#9b7bff" }, lav);
+
+/* ---------- lapisan (parallax) ---------- */
+const layer = f => el("g", { class: "par", "data-f": f }, svg);
+
+/* LANGIT */
+const gSky = layer(2);
+const skyRect = (fill, v) => el("rect", { x: -100, y: -100, width: W + 200, height: H + 200, fill: `url(#${fill})`, ...(v ? { "data-v": v } : {}) }, gSky);
+skyRect("skyDay"); skyRect("skyDusk", "s"); skyRect("skyNight", "n");
+
+// aurora (malam)
+const aur = el("g", { "data-v": "n", style: "filter:blur(14px)" }, gSky);
+[[110, 34, "aurG1", 0], [175, 28, "aurG2", 2], [70, 26, "aurG3", 4]].forEach(([y, amp, gid, ph], i) => {
+  let d = `M-100 ${y}`;
+  for (let x = -100; x <= 1700; x += 40) d += ` L${x} ${(y + Math.sin(x * .006 + ph) * amp + Math.sin(x * .013 + ph) * amp * .4).toFixed(1)}`;
+  for (let x = 1700; x >= -100; x -= 40) d += ` L${x} ${(y + 120 + Math.sin(x * .005 + ph + 1) * amp * .7).toFixed(1)}`;
+  el("path", { d: d + "Z", fill: `url(#${gid})`, class: "aur", style: `animation-delay:-${i * 4}s` }, aur);
+});
+
+// bintang, bima sakti, bintang jatuh (malam)
+const stars = el("g", { "data-v": "n" }, gSky);
+const milky = el("g", { transform: "rotate(-20 700 190)" }, stars);
+el("ellipse", { cx: 700, cy: 190, rx: 780, ry: 90, fill: "url(#milkyG)" }, milky);
+for (let i = 0; i < 230; i++) {
+  const u = rr(-1, 1), y = 190 + (R() + R() + R() - 1.5) * 85;
+  el("circle", { cx: f1(700 + u * 760), cy: f1(y), r: rr(.5, 1.2).toFixed(1), fill: "#fff", "fill-opacity": rr(.3, .9).toFixed(2) }, milky);
+}
+for (let i = 0; i < 130; i++) {
+  el("circle", { cx: rr(-60, W + 60).toFixed(0), cy: rr(-80, 480).toFixed(0), r: rr(.6, 1.8).toFixed(1), fill: "#fff", class: "star", style: `animation-delay:-${rr(0, 3).toFixed(1)}s;animation-duration:${rr(2, 5).toFixed(1)}s` }, stars);
+}
+for (let i = 0; i < 9; i++) {
+  const x = rr(60, W - 60), y = rr(10, 380);
+  el("circle", { cx: x.toFixed(0), cy: y.toFixed(0), r: 7, fill: "#fff", "fill-opacity": .1, class: "star", style: `animation-delay:-${rr(0, 3).toFixed(1)}s` }, stars);
+  el("circle", { cx: x.toFixed(0), cy: y.toFixed(0), r: 2.2, fill: "#fff", class: "star", style: `animation-delay:-${rr(0, 3).toFixed(1)}s` }, stars);
+}
+[[1000, 60, 11, 3], [520, 120, 14, 8], [1350, 40, 17, 12]].forEach(([x, y, t, d]) => {
+  const g = el("g", { class: "shoot", style: `--t:${t}s;animation-delay:-${d}s` }, stars);
+  el("line", { x1: x, y1: y, x2: x + 90, y2: y - 45, stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round", "stroke-opacity": .8 }, g);
+  el("circle", { cx: x, cy: y, r: 2.6, fill: "#fff" }, g);
+});
+
+// awan (siang dan senja)
+const clouds = el("g", { "data-v": "ds" }, gSky);
+[[150, 1, 150, 20], [260, .8, 190, 90], [90, 1.2, 230, 150], [330, .7, 170, 60]].forEach(([y, s, dur, delay]) => {
+  const c = el("g", { class: "cloud", style: `animation-duration:${dur}s;animation-delay:-${delay}s` }, clouds);
+  [[0, 0, 46, 24], [44, -16, 40, 26], [86, 0, 50, 24], [40, 10, 62, 18]].forEach(([dx, dy, rx, ry]) =>
+    el("ellipse", { cx: dx * s, cy: y + dy * s, rx: rx * s, ry: ry * s, class: "cl" }, c));
+});
+
+/* MATAHARI / BULAN */
+const gSun = layer(5);
+const sun = el("g", { "data-v": "d" }, gSun);
+el("circle", { cx: 1250, cy: 220, r: 190, fill: "url(#sunGlow)" }, sun);
+const raysG = el("g", { class: "rays" }, sun);
+for (let i = 0; i < 12; i++) {
+  const a = i * 30 * Math.PI / 180;
+  el("line", { x1: 1250 + Math.cos(a) * 68, y1: 220 + Math.sin(a) * 68, x2: 1250 + Math.cos(a) * 98, y2: 220 + Math.sin(a) * 98, stroke: "#ffe27a", "stroke-width": 5, "stroke-linecap": "round", "stroke-opacity": .75 }, raysG);
+}
+el("circle", { cx: 1250, cy: 220, r: 52, fill: "#ffe27a" }, sun);
+
+const dusk = el("g", { "data-v": "s" }, gSun);
+el("circle", { cx: 1100, cy: 400, r: 340, fill: "url(#duskGlow)" }, dusk);
+el("circle", { cx: 1100, cy: 400, r: 74, fill: "#ffd27a" }, dusk);
+el("circle", { cx: 1100, cy: 400, r: 58, fill: "#fff0b0" }, dusk);
+
+const moon = el("g", { "data-v": "n" }, gSun);
+el("circle", { cx: 1250, cy: 220, r: 170, fill: "url(#moonGlow)" }, moon);
+el("circle", { cx: 1250, cy: 220, r: 84, fill: "#fff", "fill-opacity": .06, stroke: "#fff", "stroke-opacity": .12 }, moon);
+el("circle", { cx: 1250, cy: 220, r: 54, fill: "#fff1c2" }, moon);
+[[-18, -14, 10], [16, -24, 8], [12, 14, 13], [-26, 16, 6], [30, 2, 5]].forEach(([dx, dy, r]) =>
+  el("circle", { cx: 1250 + dx, cy: 220 + dy, r, fill: "#f0dc9d", "fill-opacity": .85 }, moon));
+
+/* BUKIT JAUH */
+const gFar = layer(8);
+el("path", { d: hillPath(H0), class: "h0" }, gFar);
+el("path", { d: hillPath(H1), class: "h1" }, gFar);
+
+/* fungsi bunga */
+function sunflower(parent, x, baseY, h, scale, lean, rot) {
+  const a = rr(.7, 1.9).toFixed(2), t = rr(4.5, 7.5).toFixed(1), d = rr(0, 7).toFixed(1);
+  const g = el("g", { class: "sw", "data-k": "sunflower", style: `transform-origin:${f1(x)}px ${f1(baseY)}px;--a:${a}deg;--t:${t}s;animation-delay:-${d}s` }, parent);
+  const hx = x + lean, hyy = baseY - h;
+  el("path", { d: `M${f1(x)} ${f1(baseY)} Q${f1(x + lean * .2)} ${f1(baseY - h * .5)} ${f1(hx)} ${f1(hyy)}`, stroke: "#3f8f45", "stroke-width": Math.max(2, scale * 9).toFixed(1), fill: "none", "stroke-linecap": "round" }, g);
+  const q = tt => { const u = 1 - tt; return [u * u * x + 2 * u * tt * (x + lean * .2) + tt * tt * hx, u * u * baseY + 2 * u * tt * (baseY - h * .5) + tt * tt * hyy]; };
+  const s = Math.max(.32, scale * 1.35);
+  [[.34, -28], [.58, 208]].forEach(([tt, ang], i) => {
+    const [px, py] = q(tt);
+    el("use", { href: "#leaf", transform: `translate(${f1(px)} ${f1(py)}) rotate(${ang}) scale(${s.toFixed(2)})`, fill: i ? "#4aa04f" : "#3f9446" }, g);
+  });
+  el("use", { href: "#sfHead", transform: `translate(${f1(hx)} ${f1(hyy)}) rotate(${rot.toFixed(1)}) scale(${scale.toFixed(3)} ${(scale * .97).toFixed(3)})` }, g);
+}
+const WILD = ["daisy", "cosmos", "poppy", "lav", "daisy", "cosmos"];
+function wild(parent, type, x, baseY, h, scale) {
+  const a = rr(1, 3).toFixed(2), t = rr(3.5, 6).toFixed(1), d = rr(0, 6).toFixed(1), lean = rr(-6, 6);
+  const g = el("g", { class: "sw", "data-k": "wild", style: `transform-origin:${f1(x)}px ${f1(baseY)}px;--a:${a}deg;--t:${t}s;animation-delay:-${d}s` }, parent);
+  el("path", { d: `M${f1(x)} ${f1(baseY)} Q${f1(x + lean * .2)} ${f1(baseY - h * .5)} ${f1(x + lean)} ${f1(baseY - h)}`, stroke: "#3f8f45", "stroke-width": Math.max(1.2, scale * 1.6).toFixed(1), fill: "none", "stroke-linecap": "round" }, g);
+  if (type !== "lav") el("use", { href: "#leaf", transform: `translate(${f1(x + lean * .2)} ${f1(baseY - h * .45)}) rotate(${R() < .5 ? -30 : 210}) scale(${(scale * .28).toFixed(2)})`, fill: "#43a047" }, g);
+  el("use", { href: "#" + type, transform: `translate(${f1(x + lean)} ${f1(baseY - h)}) rotate(${rr(-15, 15).toFixed(0)}) scale(${scale.toFixed(2)})` }, g);
+}
+
+/* BARIS BELAKANG */
+const gBack = layer(14);
+const rowBack = el("g", { class: "dim" }, gBack);
+for (let x = -40; x < W + 60; x += rr(28, 40)) sunflower(rowBack, x, H1(x) + 6, rr(55, 85), rr(.2, .28), rr(-8, 8), rr(-14, 14));
+el("rect", { x: -100, y: 540, width: W + 200, height: 150, fill: "url(#fogGrad)" }, gBack);
+
+/* BARIS TENGAH */
+const gMid = layer(22);
+el("path", { d: hillPath(H2), class: "h2" }, gMid);
+const rowMid = el("g", { class: "dim" }, gMid);
+for (let x = -30; x < W + 50; x += rr(55, 78)) sunflower(rowMid, x, H2(x) + 8, rr(130, 185), rr(.36, .48), rr(-12, 12), rr(-14, 14));
+for (let i = 0; i < 45; i++) { const x = rr(-20, W + 20); wild(rowMid, WILD[Math.floor(R() * WILD.length)], x, H2(x) + rr(4, 18), rr(18, 50), rr(.5, .8)); }
+el("rect", { x: -100, y: 650, width: W + 200, height: 160, fill: "url(#fogGrad)" }, gMid);
+el("ellipse", { cx: 800, cy: 640, rx: 700, ry: 46, fill: "url(#mistG)", class: "mist" }, gMid);
+
+/* TANAH DEPAN + bunga liar + cahaya */
+const gGround = layer(30);
+el("path", { d: hillPath(H3), class: "h3" }, gGround);
+const rowWild = el("g", { class: "dim" }, gGround);
+for (let i = 0; i < 80; i++) { const x = rr(-20, W + 20); wild(rowWild, WILD[Math.floor(R() * WILD.length)], x, H3(x) + rr(6, 26), rr(30, 95), rr(.9, 1.5)); }
+for (let i = 0; i < 18; i++) { const x = rr(620, 980); wild(rowWild, i % 3 === 0 ? "cosmos" : "daisy", x, H3(x) + rr(8, 26), rr(25, 70), rr(.9, 1.3)); }
+const by = H3(800) + 14;
+el("ellipse", { cx: 810, cy: by + 6, rx: 240, ry: 38, fill: "url(#groundGlow)" }, gGround);
+el("ellipse", { cx: 800, cy: 790, rx: 760, ry: 40, fill: "url(#mistG)", class: "mist", style: "animation-delay:-9s" }, gGround);
+
+// sinar cahaya
+const rayTop = el("g", { "data-v": "nd", class: "blend" }, gGround);
+const rs = el("g", { class: "rs" }, rayTop);
+for (let i = 0; i < 6; i++) {
+  const bx = 500 + i * 100 + rr(-20, 20), hw = rr(30, 60);
+  el("polygon", { points: `1250,220 ${f1(bx - hw)},900 ${f1(bx + hw)},900`, fill: "url(#rayG)", class: "rp", style: `animation-delay:-${rr(0, 6).toFixed(1)}s;animation-duration:${rr(5, 9).toFixed(1)}s` }, rs);
+}
+const rayDusk = el("g", { "data-v": "s", class: "blend" }, gGround);
+for (let i = 0; i < 6; i++) {
+  const ya = 230 + i * 110;
+  el("polygon", { points: `1100,400 -100,${ya} -100,${ya + 70}`, fill: "url(#rayD)", class: "rp", style: `animation-delay:-${rr(0, 6).toFixed(1)}s` }, rayDusk);
+}
+
+/* ---------- LILY PUTIH di tengah ---------- */
+const gLily = layer(32);
+const P = [[800, by], [786, by - 140], [808, by - 285], [822, by - 430]];
+const bz = t => {
+  const u = 1 - t;
+  return [0, 1].map(k => u * u * u * P[0][k] + 3 * u * u * t * P[1][k] + 3 * u * t * t * P[2][k] + t * t * t * P[3][k]);
+};
+const lilyG = el("g", { class: "sw", "data-k": "lily", style: `transform-origin:800px ${f1(by)}px;--a:.9deg;--t:7s` }, gLily);
+const [tipx, tipy] = P[3];
+
+// cahaya dan cincin
+const halo = el("g", { "data-v": "nds" }, lilyG);
+el("circle", { cx: tipx, cy: tipy, r: 240, fill: "url(#lilyGlowG)", class: "lglow" }, halo);
+
+// batang dan daun
+el("path", { d: `M${P[0]} C${P[1]} ${P[2]} ${P[3]}`, stroke: "#3f8f45", "stroke-width": 9, fill: "none", "stroke-linecap": "round" }, lilyG);
+el("path", { d: `M${P[0][0] + 2} ${P[0][1]} C${P[1][0] + 2} ${P[1][1]} ${P[2][0] + 2} ${P[2][1]} ${P[3][0] + 2} ${P[3][1]}`, stroke: "#8fd493", "stroke-opacity": .5, "stroke-width": 2, fill: "none", "stroke-linecap": "round" }, lilyG);
+[.1, .24, .38, .52, .66, .78].forEach((t, i) => {
+  const [x, y] = bz(t), right = i % 2 === 0, k = 1.9 - t * 1.0;
+  el("use", { href: "#leaf", transform: `translate(${f1(x)} ${f1(y)}) rotate(${right ? -32 : 212}) scale(${k.toFixed(2)} ${(k * .78).toFixed(2)})`, fill: i % 2 ? "#4aa04f" : "#3f9446" }, lilyG);
+});
+{ // kuncup
+  const [bx, byy] = bz(.9);
+  el("path", { d: `M${f1(bx)} ${f1(byy)} Q${f1(bx + 18)} ${f1(byy - 10)} ${f1(bx + 36)} ${f1(byy - 32)}`, stroke: "#4d9a4f", "stroke-width": 4, fill: "none", "stroke-linecap": "round" }, lilyG);
+  el("ellipse", { cx: f1(bx + 40), cy: f1(byy - 48), rx: 10, ry: 26, fill: "url(#budGrad)", stroke: "#cfe3b8", "stroke-width": .8, transform: `rotate(28 ${f1(bx + 40)} ${f1(byy - 48)})` }, lilyG);
+}
+
+// bunga
+const bloomWrap = el("g", { class: "lilyBloomWrap" }, lilyG);
+const breathe = el("g", { class: "breathe" }, bloomWrap);
+const bloom = el("g", { transform: `translate(${tipx} ${tipy}) rotate(-8) scale(1.7 1.45)` }, breathe);
+{
+  const pOut = "M0 0 C18 -20 26 -60 0 -104 C-26 -60 -18 -20 0 0Z";
+  const pIn  = "M0 0 C15 -18 21 -54 0 -92 C-21 -54 -15 -18 0 0Z";
+  const tepal = (angle, inner, delay) => {
+    const o = el("g", { transform: `rotate(${angle})` }, bloom);
+    const g = el("g", { class: "tp", style: `animation-delay:${delay}s` }, o);
+    el("path", { d: inner ? pIn : pOut, fill: inner ? "url(#lilyWIn)" : "url(#lilyW)", stroke: "#c9d6ea", "stroke-opacity": .75, "stroke-width": 1 }, g);
+    el("path", { d: inner ? "M0 -6 C-14 -22 -20 -54 0 -90 C-6 -54 -4 -26 0 -6Z" : "M0 -6 C-17 -22 -25 -60 0 -102 C-8 -60 -6 -26 0 -6Z", fill: "#b9c9e6", "fill-opacity": .32 }, g);
+    el("path", { d: inner ? "M0 -8 L0 -82" : "M0 -8 L0 -94", stroke: "#d4eaa0", "stroke-width": 2, "stroke-opacity": .75, fill: "none", "stroke-linecap": "round" }, g);
+    el("path", { d: inner ? "M5 -20 C8 -44 6 -64 1 -82" : "M6 -20 C10 -48 8 -74 1 -96", stroke: "#e4ecf8", "stroke-width": 1, fill: "none" }, g);
+  };
+  [60, 180, 300].forEach((a, i) => tepal(a, true, 1.7 + i * .18));
+  [0, 120, 240].forEach((a, i) => tepal(a, false, 1.0 + i * .18));
+  const core = el("g", { class: "st" }, bloom);
+  el("circle", { r: 13, fill: "url(#lilyCore)" }, core);
+  for (let i = 0; i < 6; i++) {
+    const a = (i * 60 + 20) * Math.PI / 180, L = 44 + (i % 3) * 8;
+    const px = Math.sin(a) * L, py = -Math.cos(a) * L;
+    el("line", { x1: 0, y1: 0, x2: f1(px), y2: f1(py), stroke: "#eef8c4", "stroke-width": 1.8 }, core);
+    el("ellipse", { cx: f1(px), cy: f1(py), rx: 3.4, ry: 7.5, fill: "#e0802b", transform: `rotate(${i * 60 + 20} ${f1(px)} ${f1(py)})` }, core);
+    el("ellipse", { cx: f1(px - 1), cy: f1(py - 2), rx: 1.2, ry: 3, fill: "#ffd27a" }, core);
+  }
+  el("path", { d: "M0 0 C6 -26 10 -50 6 -70", stroke: "#cfe89a", "stroke-width": 2.8, fill: "none", "stroke-linecap": "round" }, core);
+  el("circle", { cx: 6, cy: -72, r: 4.2, fill: "#9bc65a" }, core);
+}
+
+// kilau dan butir cahaya di sekitar lily
+const sparkles = el("g", { "data-v": "nds" }, lilyG);
+for (let i = 0; i < 26; i++) {
+  const a = rr(0, Math.PI * 2), r = rr(95, 270);
+  const x = tipx + Math.cos(a) * r, y = tipy + Math.sin(a) * r * .8;
+  const g = el("g", { transform: `translate(${f1(x)} ${f1(y)}) scale(${rr(.6, 1.4).toFixed(2)})` }, sparkles);
+  el("path", { d: "M0 -7 L1.8 -1.8 L7 0 L1.8 1.8 L0 7 L-1.8 1.8 L-7 0 L-1.8 -1.8Z", fill: "#fff", class: "spk", style: `--t:${rr(2.2, 4.5).toFixed(1)}s;animation-delay:-${rr(0, 4).toFixed(1)}s` }, g);
+}
+for (let i = 0; i < 22; i++) {
+  el("circle", { cx: f1(tipx + rr(-130, 130)), cy: f1(tipy + rr(-30, 90)), r: rr(1.4, 3).toFixed(1), fill: "#fff", class: "mote", style: `--dx:${rr(-30, 30).toFixed(0)}px;--t:${rr(5, 9).toFixed(1)}s;animation-delay:-${rr(0, 8).toFixed(1)}s` }, sparkles);
+}
+
+/* BARIS DEPAN */
+const gFront = layer(42);
+const rowFront = el("g", { class: "dim" }, gFront);
+for (let x = 20; x < W + 40; x += rr(90, 130)) {
+  if (x > 640 && x < 960) continue;
+  sunflower(rowFront, x, H3(x) + 14, rr(250, 350), rr(.62, .86), rr(-16, 16), rr(-12, 12));
+}
+
+/* PARTIKEL, KUNANG-KUNANG, KUPU-KUPU */
+const gFire = layer(36);
+const floats = el("g", { "data-v": "nds" }, gFire);
+for (let i = 0; i < 50; i++) {
+  el("circle", { cx: rr(0, W).toFixed(0), cy: rr(300, 900).toFixed(0), r: rr(1, 2.6).toFixed(1), fill: "var(--spark)", class: "fl", style: `--dx:${rr(20, 120).toFixed(0)}px;--dy:${rr(-260, -80).toFixed(0)}px;--t:${rr(9, 18).toFixed(1)}s;animation-delay:-${rr(0, 16).toFixed(1)}s` }, floats);
+}
+const fire = el("g", { "data-v": "ns" }, gFire);
+for (let i = 0; i < 34; i++) {
+  const x = rr(40, 1560), y = rr(300, 840);
+  const g = el("g", { class: "ff", style: `--dx:${rr(-60, 60).toFixed(0)}px;--dy:${rr(-50, 50).toFixed(0)}px;--t:${rr(6, 12).toFixed(1)}s;animation-delay:-${rr(0, 10).toFixed(1)}s` }, fire);
+  el("circle", { cx: x.toFixed(0), cy: y.toFixed(0), r: rr(9, 15).toFixed(1), fill: "url(#ffGlow)", class: "ffg", style: `animation-delay:-${rr(0, 4).toFixed(1)}s;animation-duration:${rr(2.5, 5).toFixed(1)}s` }, g);
+  el("circle", { cx: x.toFixed(0), cy: y.toFixed(0), r: 2.2, fill: "#f7ffb0" }, g);
+}
+const bfs = el("g", { "data-v": "d" }, gFire);
+[["#ff9f43", "#ffd166", "bf1", 26, 0], ["#ffffff", "#ffd1e3", "bf2", 32, 8], ["#6ec6ff", "#c7ecff", "bf3", 22, 4]].forEach(([c1, c2, name, dur, delay]) => {
+  const o = el("g", { class: "bf", style: `animation-name:${name};animation-duration:${dur}s;animation-delay:-${delay}s` }, bfs);
+  const g = el("g", { transform: "scale(1.4)" }, o);
+  const wr = el("g", { class: "wR" }, g), wl = el("g", { class: "wL" }, g);
+  el("ellipse", { cx: 9, cy: -4, rx: 9, ry: 11, fill: c1 }, wr); el("ellipse", { cx: 7, cy: 8, rx: 6, ry: 8, fill: c2 }, wr);
+  el("ellipse", { cx: -9, cy: -4, rx: 9, ry: 11, fill: c1 }, wl); el("ellipse", { cx: -7, cy: 8, rx: 6, ry: 8, fill: c2 }, wl);
+  el("ellipse", { cx: 0, cy: 2, rx: 1.8, ry: 10, fill: "#3a2f2a" }, g);
+});
+
+/* RUMPUT DEPAN + bunga buram di tepi */
+const gGrass = layer(55);
+function grass(cls, count, hMin, hMax, x0, x1, delay) {
+  const wrap = el("g", { class: "gs", style: `animation-delay:-${delay}s` }, gGrass);
+  let d = "";
+  for (let i = 0; i < count; i++) {
+    const x = rr(x0, x1), h = rr(hMin, hMax), b = rr(-18, 18);
+    d += `M${f1(x)} ${H + 6} Q${f1(x + b * .3)} ${f1(H - h * .6)} ${f1(x + b)} ${f1(H - h)} Q${f1(x + b * .5 + 5)} ${f1(H - h * .45)} ${f1(x + 8)} ${H + 6}Z`;
+  }
+  el("path", { d, class: cls }, wrap);
+}
+grass("grass1", 170, 70, 130, -30, W + 30, 0);
+grass("grass1", 60, 50, 110, 720, 880, 1.2);
+grass("grass2", 190, 50, 100, -30, W + 30, 2);
+grass("grass2", 50, 40, 90, 730, 870, 3);
+grass("grass1", 200, 25, 60, -30, W + 30, 1);
+const fgBlur = el("g", { class: "fgblur" }, gGrass);
+for (let i = 0; i < 8; i++) {
+  const x = i < 4 ? rr(20, 300) : rr(1300, 1580);
+  wild(fgBlur, i % 2 ? "cosmos" : "daisy", x, H + 14, rr(110, 190), rr(2.2, 3.2));
+}
+
+/* BOKEH */
+const gBokeh = layer(62);
+const bokeh = el("g", { "data-v": "ns" }, gBokeh);
+for (let i = 0; i < 14; i++) {
+  const r = rr(18, 60);
+  const g = el("g", { class: "ff", style: `--dx:${rr(-40, 40).toFixed(0)}px;--dy:${rr(-30, 30).toFixed(0)}px;--t:${rr(10, 20).toFixed(1)}s` }, bokeh);
+  el("circle", { cx: rr(0, W).toFixed(0), cy: rr(520, 900).toFixed(0), r: r.toFixed(0), fill: "url(#bokehG)" }, g);
+}
+
+/* ---------- interaksi ---------- */
+const MEANING = {
+  sunflower: "🌻 Bunga matahari = aku (orang keren)",
+  lily: "🤍 Lily putih = Kakak Putri",
+  wild: "🌼 Bunga liar seperti daisy, kosmos, poppy, dan lavender membuat taman terasa hidup dan penuh warna."
+};
+const toast = document.getElementById("toast");
+let toastTimer;
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 4200);
+}
+function burst(colors, n, x, y) {
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement("div");
+    p.className = "fall";
+    p.style.left = (x + Math.random() * 60 - 30) + "px";
+    p.style.top = (y + Math.random() * 40 - 20) + "px";
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.setProperty("--dx", (Math.random() * 300 - 150) + "px");
+    p.style.setProperty("--r", (Math.random() * 720 - 360) + "deg");
+    p.style.animationDuration = (3 + Math.random() * 3) + "s";
+    p.style.animationDelay = (Math.random() * .5) + "s";
+    document.body.appendChild(p);
+    p.addEventListener("animationend", () => p.remove());
+  }
+}
+svg.addEventListener("click", e => {
+  const t = e.target.closest("[data-k]");
+  if (!t) return;
+  showToast(MEANING[t.dataset.k]);
+  if (t.dataset.k === "lily") burst(["#ffffff", "#f3fbd6", "#e9f1ff", "#fffbe6"], 30, e.clientX, e.clientY);
+  else if (t.dataset.k === "sunflower") burst(["#fde047", "#fbbf24", "#ffffff"], 10, e.clientX, e.clientY);
+  else burst(["#ffffff", "#ff8cc3", "#9b7bff"], 8, e.clientX, e.clientY);
+});
+
+// parallax dan senter cahaya mengikuti mouse
+const pars = [...svg.querySelectorAll(".par")];
+const cursorLight = document.getElementById("cursorLight");
+addEventListener("pointermove", e => {
+  const nx = e.clientX / innerWidth - .5;
+  pars.forEach(g => { g.style.transform = `translateX(${(-nx * g.dataset.f).toFixed(1)}px)`; });
+  cursorLight.style.left = e.clientX + "px";
+  cursorLight.style.top = e.clientY + "px";
+});
+
+// tombol suasana (hanya emot) dan panel surat
+const MODES = [["night", "🌙"], ["day", "☀️"], ["dusk", "🌅"]];
+let mi = 0;
+const modeIcon = document.getElementById("modeIcon");
+document.getElementById("modeBtn").onclick = () => {
+  mi = (mi + 1) % MODES.length;
+  const [m, icon] = MODES[mi];
+  document.body.dataset.mode = m;
+  modeIcon.textContent = icon;
+};
+const panel = document.getElementById("panel");
+document.getElementById("docBtn").onclick = () => panel.classList.toggle("hidden");
+
+// layar pembuka, tombol "Open it", dan musik
+const intro = document.getElementById("intro");
+const bgm = document.getElementById("bgm");
+const musicBtn = document.getElementById("musicBtn");
+const introStars = intro.querySelector(".stars");
+for (let i = 0; i < 70; i++) {
+  const s = document.createElement("i");
+  const size = 1 + Math.random() * 2;
+  s.style.cssText = `left:${Math.random() * 100}%;top:${Math.random() * 100}%;width:${size}px;height:${size}px;` +
+    `animation-delay:-${(Math.random() * 3).toFixed(1)}s;animation-duration:${(2 + Math.random() * 3).toFixed(1)}s`;
+  introStars.appendChild(s);
+}
+const syncMusicIcon = () => { musicBtn.textContent = bgm.paused ? "🔇" : "🔊"; };
+bgm.addEventListener("play", syncMusicIcon);
+bgm.addEventListener("pause", syncMusicIcon);
+document.getElementById("openBtn").onclick = () => {
+  document.body.classList.add("opened");
+  intro.classList.add("gone");
+  bgm.volume = 0.7;
+  bgm.play().catch(() => {});   // klik ini juga yang mengizinkan musik otomatis diputar
+  setTimeout(() => intro.remove(), 1800);
+};
+musicBtn.onclick = () => { bgm.paused ? bgm.play().catch(() => {}) : bgm.pause(); };
+</script>
+</body>
+</html>
